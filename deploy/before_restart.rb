@@ -1,3 +1,3 @@
 #!/usr/bin/env ruby
 
-`touch /opt/cloudtop/test`
+`cd /opt/cloudtop/web/current && bundle install`
