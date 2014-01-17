@@ -1,3 +1,3 @@
 
 # we should bundle install
-run "cd #{current_release}; bundle install"
+run "cd #{release_path}; bundle install"
