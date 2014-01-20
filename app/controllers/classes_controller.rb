@@ -1,16 +1,32 @@
 require 'mongo'
-require 'securerandom'
+require 'hashids'
 
 include Mongo
 include BSON
 
-# TODO uuid generation (currently no uniqueness gaurantee)
 # TODO edge cases: nil values / errors 
 # TODO connection pool (share connection across requests)
 # TODO multi-tanency design (same db for all users?)
 # TODO LIST API limit count?
 # TODO API failure 503? 500?
 # TODO Complete the interface according to Parse
+
+# === About ObjectId ===
+#
+# There are really 2 ways to truly gaurantee unique IDs
+# 1) increment id by 1 each time
+# 2) have a set of IDs stored somewhere and take them one by one
+#
+# Neither works too well if I have to generate the id on the app side
+#
+# So eventually I'm leaving mongodb to generate the id and I put a
+# reversible hash function on top of it to make shorter and more random
+# user-facing ids.
+#
+# This is actually good performance-wise too. Now we are not wasting
+# the underlying primary index and do not have to create a separate
+# index to track uniqueness of our own ids.
+# 
 class ClassesController < ApplicationController
   
   # don't want csrf protection
@@ -25,9 +41,12 @@ class ClassesController < ApplicationController
 
   OBJECT_ID_BYTE_LEN = 5
 
+  MY_SALT = 'It really does not matter if you know this'
+
   def initialize
     @mongo = MongoClient.new
     @db = @mongo['test']
+    @hashids = Hashids.new(MY_SALT)
   end
 
   public
@@ -37,7 +56,9 @@ class ClassesController < ApplicationController
     coll = @db[params[:className]]
 
     objs =  coll.find().to_a.each do |obj|
+              mongoId = obj[MONGO_ID_KEY]
               obj.delete(MONGO_ID_KEY) 
+              obj[OBJECT_ID_KEY] = mongo_to_object_id(mongoId)
             end
 
     ret = Hash.new
@@ -53,14 +74,14 @@ class ClassesController < ApplicationController
   def create
     coll = @db[params[:className]]
 
+    # construct the object. objectId is not needed
     obj = JSON.parse(request.body.read)
-    obj[OBJECT_ID_KEY] = SecureRandom.hex(OBJECT_ID_BYTE_LEN)
     obj[CREATION_TIME_KEY] = Time.now.utc
 
-    id = coll.insert(obj)
+    mongoId = coll.insert(obj)
 
     ret = Hash.new
-    ret[OBJECT_ID_KEY] = obj[OBJECT_ID_KEY]
+    ret[OBJECT_ID_KEY] = mongo_to_object_id(mongoId)
     ret[CREATION_TIME_KEY] = obj[CREATION_TIME_KEY]
 
     render json: ret, status: 201
@@ -70,10 +91,12 @@ class ClassesController < ApplicationController
   def show
     # get the data
     coll = @db[params[:className]]
-    obj = coll.find(OBJECT_ID_KEY => params[:id]).to_a[0]
+    mongoId = object_to_mongo_id(params[:id])
+    obj = coll.find_one(MONGO_ID_KEY => mongoId)
+    
+    # hide mongoid
     obj.delete(MONGO_ID_KEY)
-
-    # respond
+    obj[OBJECT_ID_KEY] = params[:id]
     render json: obj 
   end
 
@@ -83,7 +106,8 @@ class ClassesController < ApplicationController
 
     obj = JSON.parse(request.body.read)
     obj[UPDATE_TIME_KEY] = Time.now.utc
-    coll.update({OBJECT_ID_KEY => params[:id]}, {'$set' => obj})
+    coll.update({MONGO_ID_KEY => object_to_mongo_id(params[:id])}, 
+                 {'$set' => obj})
 
     ret = Hash.new
     ret[UPDATE_TIME_KEY] = obj[UPDATE_TIME_KEY]
@@ -93,8 +117,20 @@ class ClassesController < ApplicationController
   # Remove the object
   def destroy
     coll = @db[params[:className]]
-    coll.remove(OBJECT_ID_KEY => params[:id])
+    coll.remove(MONGO_ID_KEY => object_to_mongo_id(params[:id]))
     render nothing: true
+  end
+
+  private
+
+  #
+  def mongo_to_object_id mongoId
+    @hashids.encrypt_hex(mongoId.to_s)         
+  end
+
+  #
+  def object_to_mongo_id objectId
+    ObjectId.from_string(@hashids.decrypt_hex(objectId).to_str)
   end
 
 end

@@ -18,6 +18,9 @@ gem 'mongo'
 # Need the BSON extension
 gem 'bson_ext'
 
+# For generating short hash strings
+gem 'hashids'
+
 # See https://github.com/sstephenson/execjs#readme for more supported runtimes
 # gem 'therubyracer', platforms: :ruby
 
