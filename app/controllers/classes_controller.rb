@@ -44,7 +44,7 @@ class ClassesController < ApplicationController
   MY_SALT = 'It really does not matter if you know this'
 
   def initialize
-    @mongo = MongoClient.new
+    @mongo = MongoClient.new('50.17.233.96', 27017)
     @db = @mongo['test']
     @hashids = Hashids.new(MY_SALT)
   end
