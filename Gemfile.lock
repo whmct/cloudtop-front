@@ -37,10 +37,16 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.6.3)
+    commander (4.1.5)
+      highline (~> 1.6.11)
     erubis (2.7.0)
     execjs (2.0.2)
     hashids (0.3.0)
+    highline (1.6.20)
     hike (1.2.3)
+    houston (2.0.0)
+      commander (~> 4.1)
+      json
     httparty (0.12.0)
       json (~> 1.8)
       multi_xml (>= 0.5.2)
@@ -123,6 +129,7 @@ DEPENDENCIES
   bson_ext
   coffee-rails (~> 4.0.0)
   hashids
+  houston
   jbuilder (~> 1.2)
   jquery-rails
   mongo

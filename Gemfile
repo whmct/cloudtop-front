@@ -35,7 +35,8 @@ gem 'jbuilder', '~> 1.2'
 
 # Push Notification for both iOS and android
 # https://github.com/NicosKaralis/pushmeup
-gem 'pushmeup'
+
+gem 'houston'
 group :doc do
   # bundle exec rake doc:rails generates the API under doc/api.
   gem 'sdoc', require: false
